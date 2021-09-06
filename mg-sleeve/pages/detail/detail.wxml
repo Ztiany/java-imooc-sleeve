@@ -1,0 +1,72 @@
+<!--pages/detail/detail.wxml-->
+<wxs src="../../wxs/price.wxs" module="p"></wxs>
+
+<scroll-view scroll-y style="height:{{contentHeight}}rpx;">
+
+    <!--轮播图-->
+    <swiper class="top" autoplay indicator-dots>
+        <block wx:for="{{spu.spu_img_list}}">
+            <swiper-item>
+                <image class="top" src="{{item.img}}" mode="aspectFill"></image>
+            </swiper-item>
+        </block>
+    </swiper>
+
+    <!--商品信息-->
+    <s-spu-description spu="{{spu}}"></s-spu-description>
+
+    <!--优惠券-->
+    <view bind:tap="onGoToCouponCenter" class="coupon-container" wx:if="{{coupons.length!=0}}">
+        <view class="coupon-left">
+            <block wx:for="{{coupons}}">
+                <s-coupon-mini text="{{item.title}}"></s-coupon-mini>
+            </block>
+        </view>
+        <view class="coupon-right">
+            <text>立即领取</text>
+            <l-icon name="right" color="#157658" size="24"></l-icon>
+        </view>
+    </view>
+
+    <!--已选规格提示-->
+    <view wx:if="{{!specs.noSpec}}" class="sku-pending" bind:tap="onAddToCart">
+        <view class="specs">
+            <text wx:if="{{!specs.skuIntact}}">请选择：</text>
+            <text wx:else>已选：</text>
+            <text wx:if="{{!specs.skuIntact}}">{{specs.missingKeys}}</text>
+            <text wx:else>{{specs.currentValues}}</text>
+        </view>
+        <view class="arrow-right">
+            <l-icon name="right" color="#157658" size="24"></l-icon>
+        </view>
+    </view>
+
+    <!--规格说明-->
+    <view class="explain">
+        <s-sale-explain texts="{{saleExplain}}"></s-sale-explain>
+    </view>
+
+    <!--详情图-->
+    <view class="detail-img-container">
+        <block wx:for="{{spu.spu_img_list}}" wx:key="index">
+            <image src="{{item.img}}" class="detail-img" mode="widthFix"></image>
+        </block>
+    </view>
+
+</scroll-view>
+
+        <!--规格选择-->
+<l-popup show="{{showRealm}}" contentAlign="bottom">
+    <s-realm bind:shopping="onShopping" bind:sepcchange="onSpecChange" spu="{{spu}}" orderWay="{{orderWay}}"></s-realm>
+</l-popup>
+
+        <!--底部操作-->
+<s-tab-bar
+        class="tabbar"
+        cartItemCount="{{cartItemCount}}"
+        bind:gotohome="onGoToHome"
+        bind:gotocart="onGoToCart"
+        bind:addtocart="onAddToCart"
+        bind:buy="onBuy">
+
+</s-tab-bar>
