@@ -20,6 +20,7 @@ public class Tester {
         doDataInsert(event);
     }
 
+    //测试泛型
     private static void doTest(ApplicationReadyEvent event) {
         Spec oSpec = new Spec();
         oSpec.setKey("1");

@@ -1,4 +1,4 @@
-# part02-jpa_and_orm【】
+# part02-jpa_and_orm
 
 ## 1 JPA
 
