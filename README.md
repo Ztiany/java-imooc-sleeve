@@ -1,4 +1,4 @@
-# 慕课网：[Java 全栈工程师学习笔记](https://class.imooc.com/sale/javafullstack) 学习笔记
+# 慕课网体系课：[Java 全栈工程师](https://class.imooc.com/sale/javafullstack) 学习笔记
 
 1. 第一阶段：小程序开发。【mg-sleeve】
 2. 第二阶段：后端开发。【java-sleeve】
