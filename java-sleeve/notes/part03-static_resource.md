@@ -21,4 +21,3 @@ implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 ```
 
 所有的资源都放在 `resource/static` 资源目录下。比如将图片放在 `resource/static/imgs/a.png` 下，则访问路径为：`localhost:8081/imgs/test@2x.png`。
-

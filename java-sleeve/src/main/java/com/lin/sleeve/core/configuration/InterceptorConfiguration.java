@@ -16,6 +16,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class InterceptorConfiguration implements WebMvcConfigurer {
 
+    /** 将  PermissionInterceptor 加入 IOC 容器中，才能才能完成对 PermissionInterceptor 的注入。 */
     @Bean
     public HandlerInterceptor getPermissionInterceptor() {
         return new PermissionInterceptor();
@@ -23,6 +24,10 @@ public class InterceptorConfiguration implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        /*
+        getPermissionInterceptor() 这个方法调用拿到的其实是已经被完成注入的 PermissionInterceptor。
+        否则 PermissionInterceptor 上的 userService 成员将会是 null 的。
+        */
         registry.addInterceptor(getPermissionInterceptor());
     }
 

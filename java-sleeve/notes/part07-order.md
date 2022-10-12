@@ -42,9 +42,11 @@
 
 ## 5 库存归还
 
-1. 怎么规范库存。
+1. 怎么归还库存。
 2. 什么时候。
-3. 由谁来触发归还操作【延迟消息队列：redis 或者 RocketMQ】。
+3. 由谁来触发归还操作：延迟消息队列。
+
+类比 [优惠券](part06-coupon.md) 的情况，可以使用主动轮询也可以使用被动触发，显然主动轮询不够精确也浪费性能。一般会使用延迟消息队列来做触发，常见的有 redis 或者 RocketMQ。
 
 ### 5.1 延迟消息队列：redis
 
@@ -63,8 +65,13 @@ notify-keyspace-events Ex
 
 然后在 redis 客户端订阅过期事件：
 
-```redis
-psubscribe __keyevent@0__:expired
+```yaml
+  redis:
+    localhost: localhost
+    port: 6379
+    database: 7
+    # __keyevent 固定，@7，表示 7 号数据库，expired 表示过期事件。
+    listen-pattern: __keyevent@7__:expired
 ```
 
 ### 5.2 延迟消息队列：RocketMQ
@@ -86,10 +93,6 @@ psubscribe __keyevent@0__:expired
 .\bin\mqbroker.cmd -n localhost:9876 autoCreateTopicEnable=true
 ```
 
+### 如何选择
 
-
-
-
-
-
-
+Redis 没有 RocketMQ 可靠，RocketMQ 内存占用较大。
