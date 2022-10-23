@@ -87,6 +87,10 @@ Service 层返回 BO，Controller 层返回 VO。
    2. 比如如果 BannerItem 是能独立存在的，不一定依附于一个 Banner，那么它不应该被删除，则 BannerItem 可以在 Banner 之间共享。
    3. 另外如果 BannerItem 是不能独立存在的，它必须依附于一个 Banner，但是考虑到以后还需要用到，也可以不删除。
 
+### 代码生成器
+
+运行 test 目录下的 CodeGenerator，然后输入对应的表名，即可生成对应的 Controller/Service/Mapper/DO。
+
 ### 带文件的表单
 
 带文件的表单的提交应该分为两步：
@@ -101,3 +105,110 @@ Service 层返回 BO，Controller 层返回 VO。
 1. 前端提交文件给业务服务器，业务服务器做好相关校验。【避免暴露资源服务器的地址】
 2. 业务服务器将图片提价到资源服务器，保留图片的 md5 值和相关信息。
 3. 客户端访问图片则可以自己访问资源服务器。
+
+## 4 CMS 权限、双令牌机制解析
+
+### 权限的重要性
+
+对于 CMS 来讲，权限是非常重要的，权限有以下概念：
+
+- 用户
+- 分组
+- 权限
+
+设计思想：RBAC。
+
+Lin CMS 里，用户必须属于一个分组，这样就简化了设计。Lin CMS 默认有一个 root 和 guest 分组。guest 和其他普通分组没有区别，就只是一个默认的普通分组而已。
+
+guest 用于在管理员创建用用户时没有指定其分组的情况下，为用于指定默认属于 guest 分组。
+
+权限必须分配给分组，不能直接分配给用户。
+
+优秀的权限管理控制应该是具体到按钮级别的，而不是隐藏或展示某一个功能。
+
+Lin CMS 里默认也有一个 root 用户，密码为 123456。
+
+### Lin CMS 里的权限设计
+
+有五种注解：
+
+- LoginRequired：要求登录，即访问数据带有有效令牌。【针对那些任何用户都可以访问的接口】
+- AdminRequired：要求用户登录，且是 属于 root 分组。
+- PermissionMeta：用于标识接口对应的权限的元信息，比如权限名与所属权限模块。mount 字段表示权限元信息是否记录到数据库。
+- GroupRequired：GroupRequired 和 PermissionMeta 应该结合使用。
+- PermissionModule：用于加在 Controller 上，表示该 Controller 下所有的方法对于权限的权限模块，这样方法上的 PermissionMeta 注解就可以省去 module 字段，当然如果加上了，就具有更好的优先级。
+
+Lin CMS 里的权限设计是自己实现的，没有使用 SpringSecurity 和 Shiro，这些框架过于庞杂，而其实自己实现一套权限管理并不是非常复杂的事。
+
+**查看数据是否应该作为一项权限**？其实是应该的，比如某些机密数据不希望被所有用户看到。 Lin CMS 的默认是让用户可以看到数据的。
+
+**更细粒度的控制**：数据库字段层面的控制，一般使用动态 SQL 实现，但是会导致代码非常复杂。Lin CMS 中并没有开放出来。
+
+### 双令牌机制
+
+```json
+{
+    "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZGVudGl0eSI6MSwic2NvcGUiOiJsaW4iLCJ0eXBlIjoiYWNjZXNzIiwiZXhwIjoxNjY2NDI2NTkxfQ.Z4ndw6vyezblNL32N5HPEWNb1tOUGNhL1UZvkKdqZmc",
+    "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZGVudGl0eSI6MSwic2NvcGUiOiJsaW4iLCJ0eXBlIjoicmVmcmVzaCIsImV4cCI6MTY2OTAxNDk5MX0.tcBcnxwH_qGLC5TxlOfb6_eI357FnJ_bKipANPjXwY0"
+}
+```
+
+单令牌机制的有效期问题，比如有效期只有 1 天，用操在即将到期时登录，然后操作了很久提交，发现过期了，需要重新登录，之前的操作都丢失了。这个体验就很不好。
+
+双令牌就可以实现一个不打扰用户的体验。
+
+- access_token 2 小时
+- refresh_token 7 天
+
+使用 refresh_token 可以在不登录的情况下获取新的 access_token。但是 refresh_token 也会到期啊，其实每次一个用 refresh_token 获取 access_token，refresh_token 自身的有效期也会延长。
+
+使用 PostMan 测试 Lin CMS 中的权限：登录获取到 access_token 后，填入 Authorization 中。
+
+![](imgs/token.png)
+
+### JWT 令牌全球性问题
+
+JWT 并不是为了解决安全问题，而是为了解决前后端分离，用户登录的问题。
+
+需要在安全和用户体验之间找到一个平衡。
+
+### 系统日志与行为日志
+
+- 系统日志：常规意义上的日志，比如应用程序抛出的日志等。【Lin CMS 默认开启】
+- 行为日志：用于记录用户的操作，回溯操作行为。【可在 Lin CMS 中配置，使用 `io.github.talelin.core.annotation.Logger` 注解】
+
+```java
+/**
+* 虽然返回 BO 到前端不规范，但是也没必要死守规范。
+*/
+@GetMapping("/{id}")
+@LoginRequired
+@PermissionMeta("查询 Banner 及其 Item 数据")
+//行为日志，目前需要配合 PermissionMeta 注解才生效（后续 lin cms 会更新，不需要也可以），行为存储在 lin_log 表中
+@Logger(template = "{user.username} 查询了 Banner 及其 Item 数据。")
+public BannerWithItemsBO getWithItems(@PathVariable @Positive Long id) {
+    return bannerService.getWithItems(id);
+}
+```
+
+### MyBatis 实体映射到 DO 的意义
+
+不同于 JPA 有属性导航，MyBatis 中的关联查询如何映射到实体呢？这个时候就不要要求 DO 必须映射到某张表了，可以根据都关联查询的结果定义出一个 DO 出来，灵活处理。比如 SupDetailDO。
+
+### MyBatis 关联查询
+
+如果使用原生的 SQL，那么 MyBatisPlus 的 TableLogic 等注解就不生效了。
+
+## 5 MyBatisPlus高级技巧
+
+### 即时搜索的意义
+
+这里的即时搜索其实就是延迟加载，按需加载，目的的为了缓解服务器压力。
+
+### MyBatis 和 JPA
+
+JPA 和 MyBatis 的查询差不多，JPA 的优点在于增删改上，JPA 支持级联操作，只要在对象上建立好映射关系，属于不同表的字段都会被 JPA 进行正确的处理。
+
+### 自定义注解实现集合类型字段校验
+
+对于前端提交的集合类型的数据，Spring 内置的校验没有提供支持，可以自定义校验注解。
